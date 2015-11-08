@@ -6,7 +6,8 @@
 
 .overlay-layer
 {
-	position: absolute;
 	box-shadow: 2px 2px 2px grey;
+	background-color: white;
+	position: absolute;
 	z-index: 10;
 }

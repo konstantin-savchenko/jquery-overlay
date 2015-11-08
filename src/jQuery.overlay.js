@@ -1,24 +1,24 @@
 /**
-* jQuery Overlay plugin
-*/
-(function(window, jQuery, undefined)
+ * jQuery Overlay plugin
+ */
+(function (window, jQuery, undefined)
 {
+	var ADD_TO_JQUERY = true;
 	var MAIN_SELECTOR = ".overlay-trigger";
 	var TYPE_UNDEFINED = "undefined";
 	var PREFIX = "";
-	var DATA_KEY = PREFIX ? (PREFIX + "-") :("") + "overlay";
-	var DATA_ITEM_KEY = (PREFIX) ? (PREFIX + "Overlay") : "overlay";
+	var DATA_KEY = PREFIX ? (PREFIX + "-") : ("") + "overlay";
+	var DATA_INIT_KEY = (PREFIX) ? (PREFIX + "Overlay") : "overlay";
 
 	var defaults =
 	{
-		trigger : "hover",
-		target : null
+		trigger: "hover",
+		target: null
 	};
-
 	var binder =
 	{
-		"click" : { bindTrigger : bindClick },
-		"hover" : { bindTrigger : bindHover }
+		"click": { bindTrigger: bindClick },
+		"hover": { bindTrigger: bindHover }
 	};
 
 	function Overlay(node, options)
@@ -28,48 +28,60 @@
 		options = options || {};
 		for (var key in defaults)
 		{
-			opts[key] = isUndefined(options[key]) ?
-				defaults[key] :
-				options[key] ;
+			opts[key] = isUndefined(options[key]) ? defaults[key] : options[key];
 		}
-
 		this.$trigger = $(node);
 		this.$target = null;
 		this.state = {
-			showing : false,
-			shown : false,
-			hiding : false,
-			hidden : false,
-			none : true
+			showing: false,
+			shown: false,
+			hiding: false,
+			hidden: false,
+			none: true
 		};
-
 		this.displayTimeout = null;
 		this.init(opts);
 	}
-
-	Overlay.prototype.displayDelayed = function(show)
+	Overlay.prototype.init = function (options)
+	{
+		this.$target = $(options.target).hide();
+		var triggers = (options.trigger || "").split(" ") || [];
+		var usedKeys = {};
+		for (var i = 0; i < triggers.length; i++)
+		{
+			var key = triggers[i];
+			if (key && binder[key] && !usedKeys[key])
+			{
+				usedKeys[key] = true;
+				binder[key].bindTrigger(this);
+			}
+		}
+		this.setState("hidden");
+		return this;
+	};
+	Overlay.prototype.displayDelayed = function (show, done)
 	{
 		var self = this;
 		var t = this.displayTimeout;
 		if (t) { window.clearTimeout(t); }
-
 		show = (show === true);
-		this.displayTimeout = window.setTimeout(function()
+		this.displayTimeout = window.setTimeout(function ()
 		{
 			var method = (show) ? self.show : self.hide;
-			method.apply(self);
+			method.apply(self, [done]);
 		}, 500);
-
+		return this;
 	};
-	Overlay.prototype.setState = function(state)
+	Overlay.prototype.setState = function (state)
 	{
 		var self = this;
 		for (var key in self.state)
 		{
 			self.state[key] = (key === state);
 		}
+		return this;
 	};
-	Overlay.prototype.getState = function()
+	Overlay.prototype.getState = function ()
 	{
 		var state = "";
 		var self = this;
@@ -84,28 +96,14 @@
 		return state;
 	};
 
-	Overlay.prototype.init = function (options)
+	Overlay.prototype.raiseEvent = function (name, data)
 	{
-		this.$target = $(options.target).hide();
-		var runModes = (options.runMode || "").split(" ") || [];
-
-		var usedKeys = {};
-		for (var i = 0; i < runModes.length; i++)
-		{
-			var key = runModes[i];
-			if (key && binder[key] && !usedKeys[key])
-			{
-				usedKeys[key] = true;
-				binder[key].bindTrigger(this);
-			}
-		}
+		var $triggerNode = this.$trigger;
+		//console.log(name);
+		$triggerNode.trigger(name, data);
+		return this;
 	};
-	Overlay.prototype.raiseEvent = function(name, data)
-	{
-		console.log(name);
-	};
-
-	Overlay.prototype.show = function(ev)
+	Overlay.prototype.show = function (done)
 	{
 		var overlay = this;
 		var $target = overlay.$target;
@@ -113,108 +111,101 @@
 		var perform = !s.showing && !s.shown;
 		var t = this.displayTimeout;
 		if (t) { window.clearTimeout(t); }
-
 		if (perform)
 		{
 			overlay.setState("showing");
-			$target.fadeIn(function()
+			$target.fadeIn(function ()
 			{
 				overlay.setState("shown");
-				overlay.raiseEvent("shown", {overlay: overlay});
-
+				overlay.raiseEvent("shown",
+				{
+					overlay: overlay
+				});
+				(done || nil).apply(overlay, []);
 			});
-
 		}
+		return this;
 	};
-
-	Overlay.prototype.hide = function(ev)
+	Overlay.prototype.hide = function (done)
 	{
 		var overlay = this;
 		var $target = overlay.$target;
 		var s = overlay.state;
 		var perform = !s.hiding && !s.hidden;
-
 		if (perform)
 		{
 			overlay.setState("hiding");
-			$target.fadeOut(function()
+			$target.fadeOut(function ()
 			{
 				overlay.setState("hidden");
-				overlay.raiseEvent("hidden", {overlay: overlay});
+				overlay.raiseEvent("hidden",
+				{
+					overlay: overlay
+				});
+				(done || nil).apply(overlay, []);
 			});
-
 		}
+		return this;
 	};
-
 
 	function bindClick(overlay)
 	{
 		var $trigger = overlay.$trigger;
 		var $target = overlay.$target;
-		var evData = { overlay: overlay };
-		var handleLeave = function(ev)
+		var evData = {
+			overlay: overlay
+		};
+		var handleLeave = function (ev)
 		{
 			overlay.hide(false);
 			ev.preventDefault();
 		};
-
-		var handleClickTrigger = function()
+		var handleClickTrigger = function ()
 		{
 			overlay.show();
-			window.setTimeout(function(){
+			window.setTimeout(function ()
+			{
 				$(document.body).one("click", handleLeave);
-
-			},0);
+			}, 0);
 		};
-
 		$trigger.on("click", evData, handleClickTrigger);
-
 	}
+
 	function bindHover(overlay)
 	{
 		var $trigger = overlay.$trigger;
 		var $target = overlay.$target;
-		var evData = { overlay: overlay };
-
-		var handleEnterTrigger = function()
+		var evData = {
+			overlay: overlay
+		};
+		var handleEnterTrigger = function ()
 		{
 			overlay.show();
 		};
-		var handleEnterTarget = function()
+		var handleEnterTarget = function ()
 		{
 			overlay.displayDelayed(true);
 		};
-		var handleLeave = function()
+		var handleLeave = function ()
 		{
 			overlay.displayDelayed(false);
 		};
-
-		$trigger
-			.on("mouseenter", evData, handleEnterTrigger)
-			.on("mouseleave", evData, handleLeave);
-
-		$target.on("mouseenter", evData, handleEnterTarget)
-			.on("mouseleave", evData, handleLeave);
+		$trigger.on("mouseenter", evData, handleEnterTrigger).on("mouseleave", evData, handleLeave);
+		$target.on("mouseenter", evData, handleEnterTarget).on("mouseleave", evData, handleLeave);
 	}
 
 	function initOverlays()
 	{
-		$(MAIN_SELECTOR).each(function(idx, node)
+		$(MAIN_SELECTOR).each(function (idx, node)
 		{
-			var overlay = $(node).xnOverlay();
+			var overlay = $makeOverlay.apply(node, []);
 		});
 	}
 
-
-	function isUndefined(item)
-	{
-		return typeof(item) === TYPE_UNDEFINED;
-	}
-
-	jQuery.fn.xnOverlay = function()
+	function $makeOverlay()
 	{
 		var $node = $(this);
-		var data = $node.data() || {};
+		var data = $node.data() ||	{};
 		var settings = {};
 		var overlay = $node.data(DATA_KEY);
 		if (!overlay)
@@ -223,25 +214,33 @@
 			{
 				var key = null;
 				var value = data[longKey];
-				var strIdx = longKey.indexOf(DATA_ITEM_KEY);
-				if (!isUndefined( value ) && strIdx === 0)
+				var strIdx = longKey.indexOf(DATA_INIT_KEY);
+				if (!isUndefined(value) && strIdx === 0)
 				{
-					key = longKey.substring(DATA_ITEM_KEY.length);
+					key = longKey.substring(DATA_INIT_KEY.length);
 					key = key.charAt(0).toLowerCase() + key.substring(1);
 
-					if (key && defaults[key])
+					if (key && !isUndefined( defaults[key] ))
 					{
 						settings[key] = value;
 					}
 				}
 			}
-
 			overlay = new Overlay(this, settings);
 			$node.data(DATA_KEY, overlay);
 		}
 		return overlay;
-	};
+	}
 
+	if (ADD_TO_JQUERY)
+	{
+		jQuery.fn[DATA_INIT_KEY] = $makeOverlay;
+	}
+
+	function isUndefined(item)
+	{
+		return typeof (item) === TYPE_UNDEFINED;
+	}
+	function nil() { return null; }
 	$(document).ready(initOverlays);
-
 }(window, jQuery));

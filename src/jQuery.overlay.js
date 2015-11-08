@@ -5,13 +5,13 @@
 {
 	var MAIN_SELECTOR = ".overlay-trigger";
 	var TYPE_UNDEFINED = "undefined";
-	var PREFIX = "xn";
-	var DATA_KEY = "xn-overlay";
-	var DATA_ITEM_KEY = "xnOverlay";
+	var PREFIX = "";
+	var DATA_KEY = PREFIX ? (PREFIX + "-") :("") + "overlay";
+	var DATA_ITEM_KEY = (PREFIX) ? (PREFIX + "Overlay") : "overlay";
 
 	var defaults =
 	{
-		runMode : "hover",
+		trigger : "hover",
 		target : null
 	};
 
@@ -223,12 +223,16 @@
 			{
 				var key = null;
 				var value = data[longKey];
-				if (!isUndefined( value ))
+				var strIdx = longKey.indexOf(DATA_ITEM_KEY);
+				if (!isUndefined( value ) && strIdx === 0)
 				{
 					key = longKey.substring(DATA_ITEM_KEY.length);
 					key = key.charAt(0).toLowerCase() + key.substring(1);
 
-					settings[key] = value;
+					if (key && defaults[key])
+					{
+						settings[key] = value;
+					}
 				}
 			}
 
